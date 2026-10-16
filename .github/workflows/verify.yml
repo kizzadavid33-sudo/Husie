@@ -1,0 +1,35 @@
+name: Husie project verification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      MIRROR_GRAM_API_URL: http://127.0.0.1:4000
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Type-check web app
+        run: npm run typecheck:web
+      - name: Type-check API
+        run: npm run typecheck:api
+      - name: Build web app
+        run: npm run build:web
+      - name: Build API
+        run: npm run build:api
