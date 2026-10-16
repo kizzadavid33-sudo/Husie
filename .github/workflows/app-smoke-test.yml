@@ -1,0 +1,127 @@
+name: Husie app smoke test
+
+on:
+  push:
+    branches: [main, add-app-testing-toolkit]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  web-smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      MIRROR_GRAM_API_URL: http://127.0.0.1:4000
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Build web app
+        run: npm run build:web
+      - name: Install browser test tools
+        run: |
+          npm install --no-save --no-package-lock playwright
+          npx playwright install --with-deps chromium
+      - name: Start isolated mock API for UI smoke test
+        run: |
+          node -e 'require("http").createServer((req,res)=>{res.writeHead(200,{"content-type":"application/json"});res.end(JSON.stringify({user:null}));}).listen(4000,"127.0.0.1")' > /tmp/husie-mock-api.log 2>&1 &
+          echo $! > /tmp/husie-mock-api.pid
+      - name: Start web app
+        run: |
+          npm run start:web > /tmp/husie-web.log 2>&1 &
+          echo $! > /tmp/husie-web.pid
+      - name: Wait for web app and check page response
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl --silent --max-time 3 --fail http://127.0.0.1:3000/login -o /tmp/husie-login.html; then
+              break
+            fi
+            sleep 2
+          done
+          if [ ! -s /tmp/husie-login.html ] || ! grep -Fq 'Welcome to Husie' /tmp/husie-login.html; then
+            echo 'FAIL: Husie login page did not return the expected page.'
+            cat /tmp/husie-web.log
+            exit 1
+          fi
+          echo 'PASS: Husie login page returned the expected HTML.'
+      - name: Test login page in a real browser
+        run: node scripts/smoke-browser.mjs
+      - name: Upload browser screenshot if test failed
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: husie-browser-failure
+          path: /tmp/husie-browser-failure.png
+          if-no-files-found: ignore
+      - name: Show server logs if the test failed
+        if: failure()
+        run: |
+          cat /tmp/husie-web.log || true
+          cat /tmp/husie-mock-api.log || true
+
+  api-integration-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: husie_test
+          POSTGRES_USER: husie_test
+          POSTGRES_PASSWORD: husie_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U husie_test -d husie_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://husie_test:husie_test_password@127.0.0.1:5432/husie_test
+      PORT: 4000
+      MEDIA_ROOT: /tmp/husie-test-media
+      SESSION_DAYS: 1
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Prepare disposable test database
+        run: node scripts/prepare-test-db.mjs
+      - name: Start API
+        run: |
+          mkdir -p "$MEDIA_ROOT"
+          npm run dev:api > /tmp/husie-api.log 2>&1 &
+          echo $! > /tmp/husie-api.pid
+      - name: Wait for API health endpoint
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl --silent --max-time 3 --fail http://127.0.0.1:4000/health -o /tmp/husie-api-health.json; then
+              break
+            fi
+            sleep 2
+          done
+          if [ ! -s /tmp/husie-api-health.json ]; then
+            echo 'FAIL: Husie API did not start.'
+            cat /tmp/husie-api.log
+            exit 1
+          fi
+          cat /tmp/husie-api-health.json
+      - name: Test real registration, login, and logout
+        run: node scripts/api-integration.mjs
+      - name: Show API logs if a test failed
+        if: failure()
+        run: cat /tmp/husie-api.log || true
