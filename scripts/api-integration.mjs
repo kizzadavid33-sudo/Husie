@@ -69,6 +69,12 @@ try {
   await testPool.end();
 }
 
+const anonymousLike = await jsonRequest(`/api/posts/${seededPostId}/like`, { method: 'POST', body: '{}' });
+assert.ok(anonymousLike.response.status === 401 || anonymousLike.response.status === 403, `Anonymous like should be blocked; received HTTP ${anonymousLike.response.status}.`);
+const anonymousComment = await jsonRequest(`/api/posts/${seededPostId}/comments`, { method: 'POST', body: JSON.stringify({ body: 'Anonymous test comment' }) });
+assert.ok(anonymousComment.response.status === 401 || anonymousComment.response.status === 403, `Anonymous comment should be blocked; received HTTP ${anonymousComment.response.status}.`);
+console.log('PASS: Anonymous users cannot like or comment.');
+
 const feed = await fetch(`${baseUrl}/api/feed?limit=10`, { headers: { cookie: loginCookie } });
 assert.equal(feed.status, 200, 'Feed should return HTTP 200.');
 const feedBody = await feed.json();
