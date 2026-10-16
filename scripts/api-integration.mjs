@@ -58,6 +58,48 @@ const duplicate = await jsonRequest('/api/auth/register', { method: 'POST', body
 assert.equal(duplicate.response.status, 400, `Duplicate registration should be rejected; received HTTP ${duplicate.response.status}.`);
 console.log('PASS: Duplicate account registration is rejected.');
 
+// Seed a disposable post in the isolated test database, then exercise social endpoints through the API.
+const { Pool } = await import('pg');
+const testPool = new Pool({ connectionString: process.env.DATABASE_URL });
+let seededPostId;
+try {
+  const seeded = await testPool.query('insert into posts(user_id,caption,visibility) values($1,$2,$3) returning id', [registered.body.user.id, 'Automated Husie test post', 'public']);
+  seededPostId = seeded.rows[0].id;
+} finally {
+  await testPool.end();
+}
+
+const feed = await fetch(`${baseUrl}/api/feed?limit=10`, { headers: { cookie: loginCookie } });
+assert.equal(feed.status, 200, 'Feed should return HTTP 200.');
+const feedBody = await feed.json();
+assert.ok(feedBody.posts.some((post) => post.id === seededPostId), 'Feed should include the seeded public post.');
+console.log('PASS: Public feed returns the seeded post.');
+
+const like = await jsonRequest(`/api/posts/${seededPostId}/like`, { method: 'POST', headers: { cookie: loginCookie }, body: '{}' });
+assert.equal(like.response.status, 200, 'Like endpoint should return HTTP 200.');
+assert.equal(like.body.liked, true, 'First like should set liked=true.');
+const unlike = await jsonRequest(`/api/posts/${seededPostId}/like`, { method: 'POST', headers: { cookie: loginCookie }, body: '{}' });
+assert.equal(unlike.body.liked, false, 'Second like should toggle liked=false.');
+console.log('PASS: Like/unlike toggles correctly.');
+
+const comment = await jsonRequest(`/api/posts/${seededPostId}/comments`, { method: 'POST', headers: { cookie: loginCookie }, body: JSON.stringify({ body: 'Automated test comment' }) });
+assert.equal(comment.response.status, 200, `Comment failed with HTTP ${comment.response.status}: ${JSON.stringify(comment.body)}`);
+assert.equal(comment.body.body, 'Automated test comment', 'Comment endpoint should return the saved comment.');
+console.log('PASS: Authenticated comment creation.');
+
+const profile = await fetch(`${baseUrl}/api/profiles/${registered.body.user.id}/full`, { headers: { cookie: loginCookie } });
+assert.equal(profile.status, 200, 'Full profile endpoint should return HTTP 200.');
+assert.equal((await profile.json()).profile?.username, account.username, 'Profile should match the registered account.');
+console.log('PASS: Authenticated profile lookup.');
+
+const secondAccount = { email: `husie-test-follower-${unique}@example.test`, username: `follower_${unique}`.slice(0, 30), password: `TestOnly-${unique}-FollowerPassword` };
+const secondRegistered = await jsonRequest('/api/auth/register', { method: 'POST', body: JSON.stringify(secondAccount) });
+assert.equal(secondRegistered.response.status, 200, `Second test registration failed with HTTP ${secondRegistered.response.status}.`);
+const follow = await jsonRequest(`/api/follows/${registered.body.user.id}`, { method: 'POST', headers: { cookie: sessionCookie(secondRegistered.response) }, body: '{}' });
+assert.equal(follow.response.status, 200, `Follow failed with HTTP ${follow.response.status}.`);
+assert.equal(follow.body.following, true, 'Follow endpoint should return following=true.');
+console.log('PASS: A second test account can follow the first account.');
+
 const logout = await jsonRequest('/api/auth/logout', { method: 'POST', headers: { cookie: loginCookie }, body: '{}' });
 assert.equal(logout.response.status, 200, `Logout failed with HTTP ${logout.response.status}.`);
 const afterLogout = await fetch(`${baseUrl}/api/auth/me`, { headers: { cookie: loginCookie } });
