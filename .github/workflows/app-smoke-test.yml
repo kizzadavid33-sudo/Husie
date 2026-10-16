@@ -1,0 +1,58 @@
+name: Husie app smoke test
+
+on:
+  push:
+    branches: [main, add-app-testing-toolkit]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  web-smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      MIRROR_GRAM_API_URL: http://127.0.0.1:4000
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Build web app
+        run: npm run build:web
+      - name: Start web app
+        run: |
+          npm run start:web > /tmp/husie-web.log 2>&1 &
+          echo $! > /tmp/husie-web.pid
+      - name: Wait for web app and test login page
+        run: |
+          for attempt in $(seq 1 60); do
+            if curl --silent --show-error --fail http://127.0.0.1:3000/login -o /tmp/husie-login.html; then
+              break
+            fi
+            sleep 2
+          done
+          if [ ! -s /tmp/husie-login.html ]; then
+            echo 'FAIL: Husie login page did not respond successfully.'
+            cat /tmp/husie-web.log
+            exit 1
+          fi
+          for expected in 'Welcome to Husie' 'Create account' 'Log in'; do
+            if ! grep -Fq "$expected" /tmp/husie-login.html; then
+              echo "FAIL: Login page did not contain expected text: $expected"
+              cat /tmp/husie-web.log
+              exit 1
+            fi
+            echo "PASS: Found expected login page text: $expected"
+          done
+          echo 'PASS: Husie login page smoke test completed.'
+      - name: Show server logs if the test failed
+        if: failure()
+        run: cat /tmp/husie-web.log || true
