@@ -1,8 +1,8 @@
 {
   "name": "Husie phone testing",
   "dockerComposeFile": "../docker-compose.yml",
-  "service": "web",
-  "runServices": ["web", "worker"],
+  "service": "dev",
+  "runServices": ["dev", "web", "worker"],
   "workspaceFolder": "/workspaces/Husie",
   "shutdownAction": "stopCompose",
   "forwardPorts": [3000, 4000],
