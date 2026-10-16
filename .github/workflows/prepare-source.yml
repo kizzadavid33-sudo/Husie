@@ -12,7 +12,6 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-
       - name: Extract prepared Husie ZIP
         shell: bash
         run: |
@@ -22,12 +21,11 @@ jobs:
           mkdir -p /tmp/husie-unpack
           unzip -q "$ARCHIVE" -d /tmp/husie-unpack
           SRC="/tmp/husie-unpack/Husie_Independent_Final_v7"
-          test -f "$SRC/package.json" || { echo "Expected project folder not found in archive"; find /tmp/husie-unpack -maxdepth 2 -type f | head -50; exit 1; }
-          test -d "$SRC/apps/web" || { echo "apps/web missing in archive"; exit 1; }
-          test -d "$SRC/apps/api" || { echo "apps/api missing in archive"; exit 1; }
-          rsync -a --exclude='.git/' --exclude='.github/workflows/prepare-source.yml' "$SRC/" ./
+          test -f "$SRC/package.json"
+          test -d "$SRC/apps/web"
+          test -d "$SRC/apps/api"
+          rsync -a --exclude='.git/' --exclude='*.zip' --exclude='.github/workflows/' "$SRC/" ./
           echo "Project files copied into repository root."
-
       - name: Commit extracted source
         shell: bash
         run: |
