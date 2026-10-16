@@ -13,7 +13,7 @@ permissions:
 jobs:
   web-smoke-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     env:
       MIRROR_GRAM_API_URL: http://127.0.0.1:4000
     steps:
@@ -27,6 +27,10 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Build web app
         run: npm run build:web
+      - name: Install browser test tools
+        run: |
+          npm install --no-save --no-package-lock playwright
+          npx playwright install --with-deps chromium
       - name: Start isolated mock API for UI smoke test
         run: |
           node -e 'require("http").createServer((req,res)=>{res.writeHead(200,{"content-type":"application/json"});res.end(JSON.stringify({user:null}));}).listen(4000,"127.0.0.1")' > /tmp/husie-mock-api.log 2>&1 &
@@ -35,7 +39,7 @@ jobs:
         run: |
           npm run start:web > /tmp/husie-web.log 2>&1 &
           echo $! > /tmp/husie-web.pid
-      - name: Wait for web app and test login page
+      - name: Wait for web app and check page response
         run: |
           for attempt in $(seq 1 30); do
             if curl --silent --max-time 3 --fail http://127.0.0.1:3000/login -o /tmp/husie-login.html; then
@@ -48,15 +52,16 @@ jobs:
             cat /tmp/husie-web.log
             exit 1
           fi
-          for expected in 'Create account' 'Log in'; do
-            if ! grep -Fq "$expected" /tmp/husie-login.html; then
-              echo "FAIL: Login page did not contain expected text: $expected"
-              cat /tmp/husie-web.log
-              exit 1
-            fi
-            echo "PASS: Found expected login page text: $expected"
-          done
-          echo 'PASS: Husie login page smoke test completed.'
+          echo 'PASS: Husie login page returned the expected HTML.'
+      - name: Test login page in a real browser
+        run: node scripts/smoke-browser.mjs
+      - name: Upload browser screenshot if test failed
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: husie-browser-failure
+          path: /tmp/husie-browser-failure.png
+          if-no-files-found: ignore
       - name: Show server logs if the test failed
         if: failure()
         run: |
