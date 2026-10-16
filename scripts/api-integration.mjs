@@ -51,7 +51,7 @@ const loginCookie = sessionCookie(login.response);
 console.log('PASS: Login with valid credentials.');
 
 const badLogin = await jsonRequest('/api/auth/login', { method: 'POST', body: JSON.stringify({ email: account.email, password: 'DefinitelyWrongPassword' }) });
-assert.equal(badLogin.response.status, 400, `Invalid login should be rejected; received HTTP ${badLogin.response.status}.`);
+assert.equal(badLogin.response.status, 401, `Invalid login should be rejected; received HTTP ${badLogin.response.status}.`);
 console.log('PASS: Invalid credentials are rejected.');
 
 const duplicate = await jsonRequest('/api/auth/register', { method: 'POST', body: JSON.stringify(account) });
