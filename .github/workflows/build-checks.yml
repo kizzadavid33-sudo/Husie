@@ -1,0 +1,36 @@
+name: Husie build checks
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "package.json"
+      - "apps/**"
+      - "db/**"
+      - ".github/workflows/build-checks.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Type-check web app
+        run: npm run typecheck:web
+      - name: Build web app
+        run: npm run build:web
+      - name: Type-check API
+        run: npm run typecheck:api
+      - name: Build API
+        run: npm run build:api
