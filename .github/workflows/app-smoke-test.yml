@@ -67,3 +67,61 @@ jobs:
         run: |
           cat /tmp/husie-web.log || true
           cat /tmp/husie-mock-api.log || true
+
+  api-integration-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: husie_test
+          POSTGRES_USER: husie_test
+          POSTGRES_PASSWORD: husie_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U husie_test -d husie_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://husie_test:husie_test_password@127.0.0.1:5432/husie_test
+      PORT: 4000
+      MEDIA_ROOT: /tmp/husie-test-media
+      SESSION_DAYS: 1
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Prepare disposable test database
+        run: node scripts/prepare-test-db.mjs
+      - name: Start API
+        run: |
+          mkdir -p "$MEDIA_ROOT"
+          npm run dev:api > /tmp/husie-api.log 2>&1 &
+          echo $! > /tmp/husie-api.pid
+      - name: Wait for API health endpoint
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl --silent --max-time 3 --fail http://127.0.0.1:4000/health -o /tmp/husie-api-health.json; then
+              break
+            fi
+            sleep 2
+          done
+          if [ ! -s /tmp/husie-api-health.json ]; then
+            echo 'FAIL: Husie API did not start.'
+            cat /tmp/husie-api.log
+            exit 1
+          fi
+          cat /tmp/husie-api-health.json
+      - name: Test real registration, login, and logout
+        run: node scripts/api-integration.mjs
+      - name: Show API logs if a test failed
+        if: failure()
+        run: cat /tmp/husie-api.log || true
