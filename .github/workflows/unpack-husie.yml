@@ -20,14 +20,19 @@ jobs:
           persist-credentials: true
 
       - name: Extract prepared Husie source
+        shell: bash
         run: |
           set -euo pipefail
           test -f Husie_Free_Testing_Prep.zip
-          unzip -q Husie_Free_Testing_Prep.zip
-          rsync -a --exclude='*.zip' Husie_Independent_Final_v7/ ./
-          rm -rf Husie_Independent_Final_v7
+          unzip -q Husie_Free_Testing_Prep.zip -d /tmp/husie-unpack
+          SRC="/tmp/husie-unpack/Husie_Independent_Final_v7"
+          test -f "$SRC/package.json"
+          test -d "$SRC/apps/web"
+          test -d "$SRC/apps/api"
+          rsync -a --exclude='.git/' --exclude='*.zip' --exclude='.github/workflows/' "$SRC/" ./
 
       - name: Commit extracted source
+        shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
