@@ -43,4 +43,5 @@ jobs:
             exit 0
           fi
           git commit -m "Extract prepared Husie source for testing"
+          git pull --rebase origin main
           git push
