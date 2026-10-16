@@ -1,0 +1,20 @@
+{
+  "name": "Husie phone testing",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "web",
+  "runServices": ["web", "worker"],
+  "workspaceFolder": "/workspaces/Husie",
+  "shutdownAction": "stopCompose",
+  "forwardPorts": [3000, 4000],
+  "portsAttributes": {
+    "3000": {
+      "label": "Husie web app",
+      "onAutoForward": "openBrowser"
+    },
+    "4000": {
+      "label": "Husie API",
+      "onAutoForward": "notify"
+    }
+  },
+  "remoteUser": "root"
+}
