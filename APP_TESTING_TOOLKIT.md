@@ -7,7 +7,7 @@ This toolkit runs automated checks for Husie's web app and API. It is designed t
 - The existing `Husie project verification` workflow checks web/API TypeScript and production builds.
 - The web smoke test builds the web app, starts it with an isolated mock API, and checks the login page.
 - A headless Chromium browser checks the login page returns HTTP 200, headings, email/password fields and buttons are visible, and no uncaught browser JavaScript errors occur.
-- The API integration test starts a disposable PostgreSQL database, applies the project's SQL schema, starts the real Husie API, and tests health/readiness, registration, current-user session, valid login, rejection of invalid credentials, rejection of duplicate registration, and logout.
+- The API integration test starts a disposable PostgreSQL database, applies the project's SQL schema, starts the real Husie API, and tests health/readiness, registration, current-user session, valid login, rejection of invalid credentials, rejection of duplicate registration, feed retrieval, like/unlike, comment creation, profile lookup, following another test account, and logout.
 - If a test fails, the workflow prints relevant server logs; browser failures may also upload a screenshot artifact.
 
 ## Run tests from your phone
