@@ -51,5 +51,13 @@ services:
       - "3000:3000"
     depends_on:
       - api
+  dev:
+    image: node:22-bookworm
+    working_dir: /workspaces/Husie
+    command: ["sleep", "infinity"]
+    volumes:
+      - .:/workspaces/Husie
+    depends_on:
+      - web
 volumes:
   mirrorgram_pg:
