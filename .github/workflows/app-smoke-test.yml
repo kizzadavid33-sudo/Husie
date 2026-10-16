@@ -27,24 +27,28 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Build web app
         run: npm run build:web
+      - name: Start isolated mock API for UI smoke test
+        run: |
+          node -e 'require("http").createServer((req,res)=>{res.writeHead(200,{"content-type":"application/json"});res.end(JSON.stringify({user:null}));}).listen(4000,"127.0.0.1")' > /tmp/husie-mock-api.log 2>&1 &
+          echo $! > /tmp/husie-mock-api.pid
       - name: Start web app
         run: |
           npm run start:web > /tmp/husie-web.log 2>&1 &
           echo $! > /tmp/husie-web.pid
       - name: Wait for web app and test login page
         run: |
-          for attempt in $(seq 1 60); do
-            if curl --silent --show-error --fail http://127.0.0.1:3000/login -o /tmp/husie-login.html; then
+          for attempt in $(seq 1 30); do
+            if curl --silent --max-time 3 --fail http://127.0.0.1:3000/login -o /tmp/husie-login.html; then
               break
             fi
             sleep 2
           done
-          if [ ! -s /tmp/husie-login.html ]; then
-            echo 'FAIL: Husie login page did not respond successfully.'
+          if [ ! -s /tmp/husie-login.html ] || ! grep -Fq 'Welcome to Husie' /tmp/husie-login.html; then
+            echo 'FAIL: Husie login page did not return the expected page.'
             cat /tmp/husie-web.log
             exit 1
           fi
-          for expected in 'Welcome to Husie' 'Create account' 'Log in'; do
+          for expected in 'Create account' 'Log in'; do
             if ! grep -Fq "$expected" /tmp/husie-login.html; then
               echo "FAIL: Login page did not contain expected text: $expected"
               cat /tmp/husie-web.log
@@ -55,4 +59,6 @@ jobs:
           echo 'PASS: Husie login page smoke test completed.'
       - name: Show server logs if the test failed
         if: failure()
-        run: cat /tmp/husie-web.log || true
+        run: |
+          cat /tmp/husie-web.log || true
+          cat /tmp/husie-mock-api.log || true
