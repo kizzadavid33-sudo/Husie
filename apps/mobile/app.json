@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "Husie",
+    "slug": "husie",
+    "version": "1.0.1",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "icon": "./assets/husie-icon.png",
+    "android": {
+      "package": "com.husie.app",
+      "versionCode": 4,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/husie-icon.png",
+        "backgroundColor": "#0878ED"
+      }
+    },
+    "plugins": [],
+    "extra": {
+      "mirrorGramApiUrl": "http://localhost:4000",
+      "mirrorGramWebUrl": "http://localhost:3000",
+      "husieApiUrl": "http://localhost:4000",
+      "husieWebUrl": "http://localhost:3000"
+    }
+  }
+}

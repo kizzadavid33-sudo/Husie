@@ -1,0 +1,24 @@
+{
+  "name": "husie",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev:web",
+    "build": "npm run build:web",
+    "start": "npm run start:web",
+    "dev:web": "npm run dev --workspace apps/web",
+    "build:web": "npm run build --workspace apps/web",
+    "start:web": "npm run start --workspace apps/web",
+    "typecheck:web": "npm run typecheck --workspace apps/web",
+    "check:web-env": "npm run check-env --workspace apps/web",
+    "install:web": "npm install --workspace apps/web",
+    "dev:api": "npm run dev --workspace apps/api",
+    "build:api": "npm run build --workspace apps/api",
+    "start:api": "npm run start --workspace apps/api",
+    "typecheck:api": "npm run typecheck --workspace apps/api",
+    "dev:independent": "npm run dev:api"
+  },
+  "workspaces": [
+    "apps/web",
+    "apps/api"
+  ]
+}

@@ -1,0 +1,55 @@
+name: husie
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mirrorgram
+      POSTGRES_USER: mirrorgram
+      POSTGRES_PASSWORD: mirrorgram-local-change-me
+    ports:
+      - "5432:5432"
+    volumes:
+      - mirrorgram_pg:/var/lib/postgresql/data
+      - ./db:/docker-entrypoint-initdb.d:ro
+  api:
+    build: ./apps/api
+    restart: unless-stopped
+    environment:
+      PORT: 4000
+      DATABASE_URL: postgresql://mirrorgram:mirrorgram-local-change-me@db:5432/mirrorgram
+      MEDIA_ROOT: /data/mirrorgram
+      SESSION_DAYS: 30
+      CORS_ORIGIN: http://localhost:3000
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./storage:/data/mirrorgram
+    depends_on:
+      - db
+  worker:
+    build: ./apps/api
+    restart: unless-stopped
+    command: npm run worker
+    environment:
+      DATABASE_URL: postgresql://mirrorgram:mirrorgram-local-change-me@db:5432/mirrorgram
+      MEDIA_ROOT: /data/mirrorgram
+      FFMPEG_BIN: ffmpeg
+    volumes:
+      - ./storage:/data/mirrorgram
+    depends_on:
+      - db
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    environment:
+      MIRROR_GRAM_API_URL: http://api:4000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+volumes:
+  mirrorgram_pg:

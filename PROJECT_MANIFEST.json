@@ -1,0 +1,28 @@
+{
+  "project": "Husie",
+  "version": "1.0.1",
+  "architecture": "Independent PostgreSQL + Fastify API + filesystem media + WebSocket foundation",
+  "database": "PostgreSQL",
+  "storage": "Persistent filesystem media storage",
+  "secrets_included": false,
+  "features": [
+    "independent authentication and sessions",
+    "public feed and media upload",
+    "likes and comments",
+    "saves and creator discovery",
+    "profiles and following",
+    "stories",
+    "realtime messaging foundation",
+    "notifications",
+    "reports and safety tools",
+    "Private Circles with member-protected text posts",
+    "account deletion flow",
+    "self-hosted deployment with Docker Compose and Caddy HTTPS"
+  ],
+  "phase": "6",
+  "supabase_runtime_dependency": false,
+  "vercel_runtime_dependency": false,
+  "railway_runtime_dependency": false,
+  "production_build_verified": false,
+  "database_integration_verified": false
+}
